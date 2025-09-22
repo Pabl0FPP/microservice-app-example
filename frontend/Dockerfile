@@ -1,35 +1,26 @@
-# Build stage
-FROM node:8.17-buster AS builder
-
-# Set working directory
+# build stage
+FROM node:8.15.0-alpine as build-stage
 WORKDIR /app
-
-#==========================dependences management=============================#
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
-
-#==========================Build=============================#
-# Copy source code
 COPY . .
-
-# Build the application
 RUN npm run build
 
-#==========================Production=============================#
-# Production stage
-FROM nginx:stable-alpine
+# production stage
+FROM nginx:1.13.12-alpine as production-stage
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist /usr/share/nginx/html
+# Install gettext for envsubst
+RUN apk add --no-cache gettext
 
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/nginx.conf
+# Copy built application
+COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Expose port 80
+# Copy nginx template and startup script
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY start.sh /start.sh
+
+# Make startup script executable
+RUN chmod +x /start.sh
+
 EXPOSE 80
-
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+CMD ["/start.sh"]
