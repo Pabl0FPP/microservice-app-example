@@ -1,0 +1,145 @@
+name: Build and Push Microservices
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  # Job para cada microservicio en paralelo
+  build-auth-api:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push auth-api
+      uses: docker/build-push-action@v5
+      with:
+        context: ./auth-api
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ secrets.DOCKER_USERNAME }}/auth-api:latest
+
+  build-todos-api:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push todos-api
+      uses: docker/build-push-action@v5
+      with:
+        context: ./todos-api
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ secrets.DOCKER_USERNAME }}/todos-api:latest
+
+  build-users-api:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push users-api
+      uses: docker/build-push-action@v5
+      with:
+        context: ./users-api
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ secrets.DOCKER_USERNAME }}/users-api:latest
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push frontend
+      uses: docker/build-push-action@v5
+      with:
+        context: ./frontend
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+
+  build-log-processor:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    
+    - name: Login to Docker Hub
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    
+    - name: Build and push log-message-processor
+      uses: docker/build-push-action@v5
+      with:
+        context: ./log-message-processor
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ secrets.DOCKER_USERNAME }}/log-message-processor:latest
+
+  # Job final para mostrar summary
+  summary:
+    needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
+    runs-on: ubuntu-latest
+    if: always() && github.event_name != 'pull_request'
+    
+    steps:
+    - name: Build Summary
+      run: |
+        echo "🚀 All microservices built and pushed to Docker Hub!"
+        echo ""
+        echo "Images available:"
+        echo "- ${{ secrets.DOCKER_USERNAME }}/auth-api:latest"
+        echo "- ${{ secrets.DOCKER_USERNAME }}/todos-api:latest"
+        echo "- ${{ secrets.DOCKER_USERNAME }}/users-api:latest"
+        echo "- ${{ secrets.DOCKER_USERNAME }}/frontend:latest"
+        echo "- ${{ secrets.DOCKER_USERNAME }}/log-message-processor:latest"
+        echo ""
+        echo "To deploy manually, run:"
+        echo "cd ansible && ./deploy.sh ${{ secrets.DOCKER_USERNAME }} latest"
