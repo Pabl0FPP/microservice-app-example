@@ -40,6 +40,7 @@ func main() {
 			"johnd_foo":   nil,
 			"janed_ddd":   nil,
 		},
+		CircuitBreaker: NewDefaultCircuitBreaker("UsersAPI"),
 	}
 
 	e := echo.New()
