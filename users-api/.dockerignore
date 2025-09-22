@@ -1,0 +1,25 @@
+# Maven
+target/
+*.releaseBackup
+release.properties
+
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+
+# IDE
+.vscode
+.idea
+*.iws
+*.iml
+*.ipr
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
