@@ -142,6 +142,18 @@ variable "os_disk" {
   }
 }
 
+# Container Apps Variables
+variable "docker_username" {
+  type        = string
+  description = "Docker Hub username for pulling images"
+}
+
+variable "image_tag" {
+  type        = string
+  default     = "latest"
+  description = "Tag for Docker images"
+}
+
 variable "subscription_id" {
   description = "Azure Subscription ID"
   type        = string
