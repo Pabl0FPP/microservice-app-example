@@ -58,7 +58,7 @@ http {
 
         # === Todos direct endpoint ===
         location /todos {
-            proxy_pass https://${TODOS_API_URL}/;
+            proxy_pass https://${TODOS_API_URL};
             proxy_set_header Host ${TODOS_API_URL};
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
