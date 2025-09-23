@@ -15,11 +15,29 @@ RUN apk add --no-cache gettext
 # Copy built application
 COPY --from=build-stage /app/dist /usr/share/nginx/html
 
-# Copy nginx template and startup script
+# Copy nginx template
 COPY nginx.conf.template /etc/nginx/nginx.conf.template
-COPY start.sh /start.sh
 
-# Make startup script executable
+# Create startup script directly in Dockerfile
+RUN cat > /start.sh << 'EOF'
+#!/bin/sh
+set -e
+
+# Replace environment variables in nginx.conf.template
+envsubst '${AUTH_API_URL} ${TODOS_API_URL} ${USERS_API_URL}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+
+# Create config.js with the API URLs for client-side access
+cat > /usr/share/nginx/html/config.js << 'INNER_EOF'
+window.CONFIG = {
+  AUTH_API_URL: '${AUTH_API_URL}',
+  TODOS_API_URL: '${TODOS_API_URL}',
+  USERS_API_URL: '${USERS_API_URL}'
+};
+INNER_EOF
+
+# Start nginx
+exec nginx -g 'daemon off;'
+EOF
 RUN chmod +x /start.sh
 
 EXPOSE 80
