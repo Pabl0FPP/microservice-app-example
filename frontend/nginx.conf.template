@@ -25,6 +25,8 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host ${AUTH_API_URL};
         }
 
         # Login endpoint (should go to auth API)
@@ -35,6 +37,8 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host ${AUTH_API_URL};
         }
 
         # Todos endpoints (direct access, not /api/todos/)
@@ -45,6 +49,8 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host ${TODOS_API_URL};
         }
 
         location /api/todos/ {
@@ -54,6 +60,8 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host ${TODOS_API_URL};
         }
 
         location /api/users/ {
@@ -63,6 +71,8 @@ http {
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
             proxy_ssl_verify off;
+            proxy_ssl_server_name on;
+            proxy_set_header Host ${USERS_API_URL};
         }
 
         # Serve config endpoint
