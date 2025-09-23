@@ -1,0 +1,93 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    upstream auth_api {
+        server ${AUTH_API_URL};
+    }
+
+    upstream todos_api {
+        server ${TODOS_API_URL};
+    }
+
+    upstream users_api {
+        server ${USERS_API_URL};
+    }
+
+    server {
+        listen 80;
+        server_name localhost;
+
+        # Serve static files
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+            try_files $uri $uri/ /index.html;
+        }
+
+        # Proxy API requests
+        location /api/auth/ {
+            proxy_pass http://auth_api/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Login endpoint (should go to auth API)
+        location /login {
+            proxy_pass http://auth_api/login;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Todos endpoints (direct access, not /api/todos/)
+        location /todos {
+            proxy_pass http://todos_api/todos;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/todos/ {
+            proxy_pass http://todos_api/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        location /api/users/ {
+            proxy_pass http://users_api/;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Serve config endpoint
+        location /config.js {
+            root /usr/share/nginx/html;
+            add_header Content-Type application/javascript;
+        }
+
+        # Handle Zipkin tracing requests (return 204 No Content to avoid errors)
+        location /zipkin {
+            return 204;
+        }
+
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "Frontend healthy\n";
+            add_header Content-Type text/plain;
+        }
+    }
+}
