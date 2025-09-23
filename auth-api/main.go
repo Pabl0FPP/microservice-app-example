@@ -32,6 +32,9 @@ func main() {
 		jwtSecret = envJwtSecret
 	}
 
+	log.Printf("Starting auth-api with USERS_API_ADDRESS: '%s'", userAPIAddress)
+	log.Printf("Using JWT_SECRET: '%s'", jwtSecret)
+
 	userService := UserService{
 		Client:         http.DefaultClient,
 		UserAPIAddress: userAPIAddress,
