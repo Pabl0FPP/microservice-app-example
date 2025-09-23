@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 
 	jwt "github.com/dgrijalva/jwt-go"
@@ -51,11 +52,15 @@ func (h *UserService) Login(ctx context.Context, username, password string) (Use
 func (h *UserService) getUser(ctx context.Context, username string) (User, error) {
 	var user User
 
+	log.Printf("getUser called for username: %s, UserAPIAddress: %s", username, h.UserAPIAddress)
+
 	token, err := h.getUserAPIToken(username)
 	if err != nil {
+		log.Printf("Error generating token: %s", err)
 		return user, err
 	}
 	url := fmt.Sprintf("%s/users/%s", h.UserAPIAddress, username)
+	log.Printf("Making request to: %s", url)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("Authorization", "Bearer "+token)
 
@@ -63,16 +68,21 @@ func (h *UserService) getUser(ctx context.Context, username string) (User, error
 
 	resp, err := h.Client.Do(req)
 	if err != nil {
+		log.Printf("Error making HTTP request: %s", err)
 		return user, err
 	}
 
 	defer resp.Body.Close()
 	bodyBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
+		log.Printf("Error reading response body: %s", err)
 		return user, err
 	}
 
+	log.Printf("Response status: %d, body: %s", resp.StatusCode, string(bodyBytes))
+
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Printf("Bad response status: %d, body: %s", resp.StatusCode, string(bodyBytes))
 		return user, fmt.Errorf("could not get user data: %s", string(bodyBytes))
 	}
 
