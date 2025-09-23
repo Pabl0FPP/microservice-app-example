@@ -38,6 +38,24 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
+        # Login endpoint (should go to auth API)
+        location /login {
+            proxy_pass http://auth_api/login;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
+        # Todos endpoints (direct access, not /api/todos/)
+        location /todos {
+            proxy_pass http://todos_api/todos;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+
         location /api/todos/ {
             proxy_pass http://todos_api/;
             proxy_set_header Host $host;
