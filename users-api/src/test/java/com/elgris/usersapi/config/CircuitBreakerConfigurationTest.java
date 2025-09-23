@@ -36,7 +36,8 @@ public class CircuitBreakerConfigurationTest {
         
         // Verificar que las métricas iniciales son correctas
         CircuitBreaker.Metrics metrics = databaseCircuitBreaker.getMetrics();
-        assertEquals(0F, metrics.getFailureRate(), 0.01F);
+        // ✅ CORREGIDO: failureRate inicial puede ser -1.0 cuando no hay llamadas
+        assertEquals(-1.0F, metrics.getFailureRate(), 0.01F); // -1.0 significa "no hay datos suficientes"
         assertEquals(0, metrics.getNumberOfFailedCalls());
         assertEquals(0, metrics.getNumberOfSuccessfulCalls());
     }
