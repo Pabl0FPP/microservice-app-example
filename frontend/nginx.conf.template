@@ -59,5 +59,17 @@ http {
             root /usr/share/nginx/html;
             add_header Content-Type application/javascript;
         }
+
+        # Handle Zipkin tracing requests (return 204 No Content to avoid errors)
+        location /zipkin {
+            return 204;
+        }
+
+        # Health check endpoint
+        location /health {
+            access_log off;
+            return 200 "Frontend healthy\n";
+            add_header Content-Type text/plain;
+        }
     }
 }
