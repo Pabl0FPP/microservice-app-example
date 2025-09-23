@@ -6,18 +6,6 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
-    upstream auth_api {
-        server ${AUTH_API_URL};
-    }
-
-    upstream todos_api {
-        server ${TODOS_API_URL};
-    }
-
-    upstream users_api {
-        server ${USERS_API_URL};
-    }
-
     server {
         listen 80;
         server_name localhost;
@@ -31,45 +19,50 @@ http {
 
         # Proxy API requests
         location /api/auth/ {
-            proxy_pass http://auth_api/;
+            proxy_pass https://${AUTH_API_URL}/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_ssl_verify off;
         }
 
         # Login endpoint (should go to auth API)
         location /login {
-            proxy_pass http://auth_api/login;
+            proxy_pass https://${AUTH_API_URL}/login;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_ssl_verify off;
         }
 
         # Todos endpoints (direct access, not /api/todos/)
         location /todos {
-            proxy_pass http://todos_api/todos;
+            proxy_pass https://${TODOS_API_URL}/todos;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_ssl_verify off;
         }
 
         location /api/todos/ {
-            proxy_pass http://todos_api/;
+            proxy_pass https://${TODOS_API_URL}/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_ssl_verify off;
         }
 
         location /api/users/ {
-            proxy_pass http://users_api/;
+            proxy_pass https://${USERS_API_URL}/;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
             proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_ssl_verify off;
         }
 
         # Serve config endpoint
