@@ -90,18 +90,12 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
 			
-			<!-- Configuración Maven Surefire para Java 17 compatibility -->
+			<!-- Configuración Maven Surefire para Java 8 -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<version>2.22.2</version>
-				<configuration>
-					<argLine>
-						--add-opens java.base/java.lang=ALL-UNNAMED
-						--add-opens java.base/java.lang.reflect=ALL-UNNAMED
-						--add-opens java.base/java.util=ALL-UNNAMED
-					</argLine>
-				</configuration>
+				<!-- Sin argLine para Java 8, no son necesarios los add-opens -->
 			</plugin>
 		</plugins>
 	</build>
