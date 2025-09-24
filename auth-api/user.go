@@ -32,6 +32,7 @@ type UserService struct {
 	Client            HTTPDoer
 	UserAPIAddress    string
 	AllowedUserHashes map[string]interface{}
+	CircuitBreaker    *CircuitBreaker
 }
 
 func (h *UserService) Login(ctx context.Context, username, password string) (User, error) {
@@ -52,6 +53,29 @@ func (h *UserService) Login(ctx context.Context, username, password string) (Use
 func (h *UserService) getUser(ctx context.Context, username string) (User, error) {
 	var user User
 
+	// Usar Circuit Breaker para proteger la llamada al Users API
+	result, err := h.CircuitBreaker.Execute(func() (interface{}, error) {
+		return h.fetchUserFromAPI(ctx, username)
+	})
+
+	if err != nil {
+		// Si el Circuit Breaker está abierto, devolver usuario por defecto o error
+		if err == ErrCircuitBreakerOpen {
+			fmt.Printf("Circuit Breaker OPEN for user %s - using fallback\n", username)
+			// Fallback: devolver usuario básico o usar caché local
+			return h.getUserFallback(username), nil
+		}
+		return user, err
+	}
+
+	user = result.(User)
+	return user, nil
+}
+
+// Nueva función que hace la llamada real al API
+func (h *UserService) fetchUserFromAPI(ctx context.Context, username string) (User, error) {
+	var user User
+
 	log.Printf("getUser called for username: %s, UserAPIAddress: %s", username, h.UserAPIAddress)
 
 	token, err := h.getUserAPIToken(username)
@@ -59,11 +83,11 @@ func (h *UserService) getUser(ctx context.Context, username string) (User, error
 		log.Printf("Error generating token: %s", err)
 		return user, err
 	}
+	
 	url := fmt.Sprintf("%s/users/%s", h.UserAPIAddress, username)
 	log.Printf("Making request to: %s", url)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("Authorization", "Bearer "+token)
-
 	req = req.WithContext(ctx)
 
 	resp, err := h.Client.Do(req)
@@ -97,4 +121,16 @@ func (h *UserService) getUserAPIToken(username string) (string, error) {
 	claims["username"] = username
 	claims["scope"] = "read"
 	return token.SignedString([]byte(jwtSecret))
+}
+
+// Fallback cuando el Circuit Breaker está abierto
+func (h *UserService) getUserFallback(username string) User {
+	// Devolver datos básicos del usuario cuando el servicio no está disponible
+	// En un caso real, esto podría venir de un caché local o datos estáticos
+	return User{
+		Username:  username,
+		FirstName: "Unknown",
+		LastName:  "User",
+		Role:      "user", // rol por defecto
+	}
 }
