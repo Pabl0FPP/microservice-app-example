@@ -31,6 +31,13 @@ class TodoController {
         return this._getDefaultTodoData();
       });
 
+      console.log(`[DEBUG] Data for ${username}:`, {
+        hasItems: !!data.items,
+        itemsType: typeof data.items,
+        itemCount: data.items ? Object.keys(data.items).length : 0,
+        lastInsertedID: data.lastInsertedID
+      });
+
       res.json(data.items);
     } catch (error) {
       console.error("Error in list todos:", error);
@@ -44,20 +51,34 @@ class TodoController {
       const cacheKey = this._cachePrefix + username;
 
       // Get current data using Cache-Aside
-      const data = await this._cacheService.get(cacheKey, async () => {
+      let data = await this._cacheService.get(cacheKey, async () => {
         return this._getDefaultTodoData();
       });
 
-      // Create new todo
+      if (!data || typeof data !== 'object' || 
+          !data.items || typeof data.items !== 'object' || 
+          typeof data.lastInsertedID !== 'number') {
+        
+        console.warn(`Invalid data structure for ${username}, using default`);
+        data = this._getDefaultTodoData();
+      }
+
+      const newId = data.lastInsertedID;
+      
       const todo = {
         content: req.body.content,
-        id: data.lastInsertedID,
+        id: newId,
       };
-      data.items[data.lastInsertedID] = todo;
-      data.lastInsertedID++;
+      
+      const updatedData = {
+        items: { ...data.items }, 
+        lastInsertedID: newId + 1
+      };
+      
+      updatedData.items[newId] = todo;
 
       // Update cache with new data
-      await this._updateCacheData(cacheKey, data);
+      await this._updateCacheData(cacheKey, updatedData);
 
       this._logOperation(OPERATION_CREATE, username, todo.id);
 
@@ -130,12 +151,16 @@ class TodoController {
 
   async _updateCacheData(cacheKey, data) {
     try {
-      // Invalidate current cache entry
-      await this._cacheService.invalidate(cacheKey);
-      // The cache service will fetch fresh data on next access
-      // We could also directly set the new data, but invalidation ensures consistency
+      if (!data || !data.items || typeof data.lastInsertedID !== 'number') {
+        console.error(`Invalid data structure for ${cacheKey}:`, data);
+        return;
+      }
+      
+      await this._cacheService.set(cacheKey, data, this._cacheTTL);
+      console.log(`Cache actualizado para ${cacheKey} con ${Object.keys(data.items).length} items`);
     } catch (error) {
       console.error("Error updating cache data:", error);
+      throw error;
     }
   }
 }

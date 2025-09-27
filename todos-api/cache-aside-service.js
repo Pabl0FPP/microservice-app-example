@@ -6,6 +6,21 @@ class CacheAsideService {
     this.defaultTTL = defaultTTL;
   }
 
+  async set(key, data, ttl = this.defaultTTL) {
+    try {
+      if (!data || !data.items || typeof data.lastInsertedID !== 'number') {
+        console.error(`Invalid data structure for ${key}`);
+        return;
+      }
+      
+      await this.redis.setex(key, ttl, JSON.stringify(data));
+      console.log(`Cache actualizado para ${key} con ${Object.keys(data.items).length} items`);
+    } catch (error) {
+      console.error(`Error actualizando cache para ${key}:`, error);
+      throw error;
+    }
+  }
+
   // Patrón Cache-Aside clásico
   async get(key, fetchFunction, ttl = this.defaultTTL) {
     try {
@@ -13,45 +28,47 @@ class CacheAsideService {
       const cached = await this.redis.get(key);
       if (cached) {
         console.log(`Cache HIT para ${key}`);
-        return JSON.parse(cached);
+        
+        try {
+          const parsedData = JSON.parse(cached);
+          
+          // Validación simple pero efectiva
+          if (parsedData && parsedData.items && typeof parsedData.lastInsertedID === 'number') {
+            return parsedData;
+          } else {
+            console.warn(`Invalid cached data for ${key} - regenerating`);
+            await this.redis.del(key);
+          }
+        } catch (parseError) {
+          console.warn(`Parse error for ${key} - deleting corrupted cache`);
+          await this.redis.del(key);
+        }
       }
 
       console.log(`Cache MISS para ${key}`);
-
-      // 2. Cache miss - ejecutar función de obtención
+      
+      // 2. Ejecutar función para obtener datos frescos
       const data = await fetchFunction();
 
-      // 3. Guardar en caché para próximas consultas
-      await this.redis.setex(key, ttl, JSON.stringify(data));
+      // 3. Validar y guardar en caché
+      if (data && data.items && typeof data.lastInsertedID === 'number') {
+        await this.redis.setex(key, ttl, JSON.stringify(data));
+      }
 
       return data;
     } catch (error) {
       console.error("Error en cache-aside:", error);
-      // En caso de error de Redis, ejecutar función directamente
+      // Fallback: ejecutar función directamente
       return await fetchFunction();
     }
   }
 
-  // Invalidar caché cuando hay actualizaciones
   async invalidate(key) {
     try {
       await this.redis.del(key);
       console.log(`Cache invalidado para ${key}`);
     } catch (error) {
       console.error("Error invalidando caché:", error);
-    }
-  }
-
-  // Invalidar múltiples claves con patrón
-  async invalidatePattern(pattern) {
-    try {
-      const keys = await this.redis.keys(pattern);
-      if (keys.length > 0) {
-        await this.redis.del(...keys);
-        console.log(`Invalidadas ${keys.length} claves con patrón ${pattern}`);
-      }
-    } catch (error) {
-      console.error("Error invalidando patrón:", error);
     }
   }
 }
