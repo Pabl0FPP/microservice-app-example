@@ -24,21 +24,23 @@ RUN cat > /start.sh << 'EOF'
 set -e
 
 # Replace environment variables in nginx.conf.template
-envsubst '${AUTH_API_URL} ${TODOS_API_URL} ${USERS_API_URL}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
+envsubst '${AUTH_API_URL} ${TODOS_API_URL} ${USERS_API_URL} ${ZIPKIN_URL}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
 
 # Create config.js with the API URLs for client-side access
 cat > /usr/share/nginx/html/config.js << 'INNER_EOF'
 window.CONFIG = {
   AUTH_API_URL: '${AUTH_API_URL}',
   TODOS_API_URL: '${TODOS_API_URL}',
-  USERS_API_URL: '${USERS_API_URL}'
+  USERS_API_URL: '${USERS_API_URL}',
+  ZIPKIN_URL: '${ZIPKIN_URL}'
 };
 INNER_EOF
 
 # Start nginx
 exec nginx -g 'daemon off;'
 EOF
-RUN chmod +x /start.sh
+RUN sed -i 's/\r$//' /start.sh  && \  
+        chmod +x /start.sh
 
 EXPOSE 80
 CMD ["/start.sh"]
