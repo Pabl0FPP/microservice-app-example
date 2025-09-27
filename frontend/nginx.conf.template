@@ -92,7 +92,7 @@ http {
 
         # === Zipkin proxy ===
         location /zipkin {
-            proxy_pass http://${ZIPKIN_URL}/api/v2/spans;
+            proxy_pass http://${ZIPKIN_URL};
 
             proxy_http_version 1.1;
             proxy_set_header Connection "";
