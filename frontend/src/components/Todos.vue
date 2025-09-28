@@ -127,16 +127,14 @@ export default {
       if (this.newTask) {
         this.isProcessing = true;
         this.errorMessage = "";
+        const payload = { content: this.newTask };
 
-        var task = {
-          content: this.newTask,
-        };
-
-        this.$http.post("/todos", task).then(
+        this.$http.post("/todos", payload).then(
           (response) => {
             this.newTask = "";
             this.isProcessing = false;
-            this.tasks.push(task);
+            // ✅ Usar el objeto devuelto (tiene id correcto)
+            this.tasks.push(response.body);
           },
           (error) => {
             this.isProcessing = false;

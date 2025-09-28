@@ -14,9 +14,7 @@ class TodoController {
     this._redisClient = redisClient;
     this._logChannel = logChannel;
     this._cachePrefix = "todos:";
-    this._cacheTTL = 900; // 15 minutes
-    // Initialize Cache-Aside Service
-    this._cacheService = new CacheAsideService(redisClient, this._cacheTTL);
+    this._cacheService = new CacheAsideService(redisClient, 0);
   }
 
   // Cache Aside Pattern: Try Redis cache first, then fallback to default data
@@ -50,41 +48,28 @@ class TodoController {
       const username = req.user.username;
       const cacheKey = this._cachePrefix + username;
 
-      // Get current data using Cache-Aside
       let data = await this._cacheService.get(cacheKey, async () => {
+        console.log(`Generating default todos for user: ${username}`);
         return this._getDefaultTodoData();
       });
 
-      if (!data || typeof data !== 'object' || 
-          !data.items || typeof data.items !== 'object' || 
-          typeof data.lastInsertedID !== 'number') {
-        
-        console.warn(`Invalid data structure for ${username}, using default`);
+      if (!data || !data.items || typeof data.lastInsertedID !== 'number') {
+        console.warn(`[create] Invalid in-memory data for ${username}, regenerating defaults`);
         data = this._getDefaultTodoData();
       }
 
       const newId = data.lastInsertedID;
-      
-      const todo = {
-        content: req.body.content,
-        id: newId,
-      };
-      
-      const updatedData = {
-        items: { ...data.items }, 
-        lastInsertedID: newId + 1
-      };
-      
-      updatedData.items[newId] = todo;
+      const todo = { id: newId, content: req.body.content };
 
-      // Update cache with new data
-      await this._updateCacheData(cacheKey, updatedData);
+      data.items[newId] = todo;
+      data.lastInsertedID = newId + 1;
+
+      await this._updateCacheData(cacheKey, data);
 
       this._logOperation(OPERATION_CREATE, username, todo.id);
-
       res.json(todo);
-    } catch (error) {
-      console.error("Error in create todo:", error);
+    } catch (e) {
+      console.error("Error in create todo:", e);
       res.status(500).json({ error: "Internal server error" });
     }
   }
@@ -152,15 +137,13 @@ class TodoController {
   async _updateCacheData(cacheKey, data) {
     try {
       if (!data || !data.items || typeof data.lastInsertedID !== 'number') {
-        console.error(`Invalid data structure for ${cacheKey}:`, data);
+        console.error(`[updateCache] Invalid data (won't write) for ${cacheKey}`, data);
         return;
       }
-      
-      await this._cacheService.set(cacheKey, data, this._cacheTTL);
-      console.log(`Cache actualizado para ${cacheKey} con ${Object.keys(data.items).length} items`);
-    } catch (error) {
-      console.error("Error updating cache data:", error);
-      throw error;
+      await this._cacheService.set(cacheKey, data, 0);
+      console.log(`Cache actualizado para ${cacheKey} con ${Object.keys(data.items).length} items (lastInsertedID=${data.lastInsertedID})`);
+    } catch (e) {
+      console.error("Error updating cache data:", e);
     }
   }
 }

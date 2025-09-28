@@ -8,8 +8,11 @@ services:
       - microservices-net
     volumes:
       - redis-data:/data
+    command: redis-server --appendonly yes --appendfsync everysec --save 60 1
     restart: unless-stopped
-
+    environment:
+      - REDIS_MAXMEMORY=256mb
+      - REDIS_MAXMEMORY_POLICY=allkeys-lru
   # Distributed tracing
   zipkin:
     image: openzipkin/zipkin
