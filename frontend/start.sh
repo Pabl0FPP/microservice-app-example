@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Replace environment variables in nginx.conf.template
 envsubst '${AUTH_API_URL} ${TODOS_API_URL} ${USERS_API_URL} ${ZIPKIN_URL}' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
