@@ -1,0 +1,47 @@
+name: Terraform Deploy
+
+on:
+  push:
+    branches: ["ops/container-apps"]
+  pull_request:
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Descargar el código
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      # 2. Login en Azure con Service Principal
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 3. Instalar Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      # 4. Inicializar (usa el backend remoto en Azure)
+      - name: Terraform Init
+        run: terraform init
+
+      # 5. Validar sintaxis
+      - name: Terraform Validate
+        run: terraform validate
+
+      # 6. Plan (con tfvars y secrets)
+      - name: Terraform Plan
+        run: terraform plan \
+          -var-file="terraform.dev.tfvars" \
+          -var "subscription_id=${{ secrets.AZURE_SUBSCRIPTION_ID }}" \
+          -var "docker_username=${{ secrets.DOCKER_USERNAME }}" \
+          -out=tfplan
+
+      # 7. Apply
+      - name: Terraform Apply
+        run: terraform apply -no-color -auto-approve tfplan
