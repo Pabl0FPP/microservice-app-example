@@ -1,7 +1,3 @@
-# Copyright (c) HashiCorp, Inc.
-# SPDX-License-Identifier: MPL-2.0
-
-# General Variables
 variable "prefix" {
   type        = string
   default     = "example"
@@ -152,9 +148,4 @@ variable "image_tag" {
   type        = string
   default     = "latest"
   description = "Tag for Docker images"
-}
-
-variable "subscription_id" {
-  description = "Azure Subscription ID"
-  type        = string
 }
