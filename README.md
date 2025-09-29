@@ -1,7 +1,7 @@
 # microservice-app-example
 
 ### Rafaela Ruiz - Pablo Pineda
-
+ 
 > Proyecto de entrenamiento para practicar DevOps, arquitectura de microservicios, patrones de resiliencia y pipelines multi‑lenguaje.
 
 ## 1. Contexto
