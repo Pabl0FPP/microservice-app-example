@@ -4,6 +4,10 @@ on:
   push:
     branches: ["ops/container-apps"]
   pull_request:
+  workflow_run:                        # se activa cuando otro workflow termina
+    workflows: ["Build and Push Microservices"]  # nombre EXACTO del workflow en master
+    types:
+      - completed
 
 jobs:
   terraform:
