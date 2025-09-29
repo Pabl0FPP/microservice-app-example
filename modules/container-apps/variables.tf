@@ -83,3 +83,8 @@ variable "tags" {
   description = "Tags to apply to resources"
   default     = {}
 }
+
+variable "subnet_id" {
+  type        = string
+  description = "ID of the subnet for Container Apps Environment"
+}

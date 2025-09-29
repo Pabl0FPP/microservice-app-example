@@ -17,12 +17,7 @@ output "resource_group_location" {
 # Monitoring Outputs
 output "log_analytics_workspace_id" {
   description = "ID of the Log Analytics Workspace"
-  value       = module.monitoring.workspace_id
-}
-
-output "log_analytics_workspace_name" {
-  description = "Name of the Log Analytics Workspace"
-  value       = module.monitoring.name
+  value       = azurerm_log_analytics_workspace.this.id
 }
 
 # Container Apps Outputs

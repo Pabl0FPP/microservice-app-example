@@ -39,7 +39,7 @@ variable "vnet_address_space" {
 
 variable "subnet_address_prefixes" {
   type        = list(string)
-  default     = ["10.0.2.0/24"]
+  default     = ["10.0.2.0/23"]
   description = "Address prefixes for the subnet"
 }
 

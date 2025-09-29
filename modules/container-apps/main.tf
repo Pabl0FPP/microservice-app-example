@@ -4,8 +4,48 @@ resource "azurerm_container_app_environment" "this" {
   location                   = var.location
   resource_group_name        = var.resource_group_name
   log_analytics_workspace_id = var.log_analytics_workspace_id
+  infrastructure_subnet_id   = var.subnet_id
+  tags = var.tags
+}
+
+# Zipkin Container App (tracing distribuido)
+resource "azurerm_container_app" "zipkin" {
+  name                         = "${var.prefix}-zipkin"
+  container_app_environment_id = azurerm_container_app_environment.this.id
+  resource_group_name          = var.resource_group_name
+  revision_mode                = "Single"
+
+  template {
+    container {
+      name   = "zipkin"
+      image  = "openzipkin/zipkin:latest"
+      cpu    = "0.25"
+      memory = "0.5Gi"
+
+      env {
+        name  = "JAVA_OPTS"
+        value = "-Dserver.address=0.0.0.0 -Dserver.port=9411"
+      }
+      
+    }
+    min_replicas = 1
+    max_replicas = 1
+  }
+  
+
+  ingress {
+    external_enabled = true
+    target_port      = 9411
+    transport       = "tcp" 
+
+    traffic_weight {
+      percentage      = 100
+      latest_revision = true
+    }
+  }
 
   tags = var.tags
+  depends_on = [azurerm_container_app_environment.this]
 }
 
 # Redis Container App (Internal)
@@ -25,17 +65,30 @@ resource "azurerm_container_app" "redis" {
       cpu    = "0.25"
       memory = "0.5Gi"
 
-      args = ["redis-server", "--requirepass", "redispassword123", "--appendonly", "yes"]
+      args = ["redis-server", "--appendonly", "yes"]
 
       env {
-        name  = "REDIS_PASSWORD"
-        value = "redispassword123"
+        name  = "ZIPKIN_URL"
+        value = "http://myapp-zipkin:9411/api/v2/spans"
       }
+
+      
     }
   }
 
+    ingress {
+      external_enabled = false
+      target_port      = 6379
+      transport        = "tcp"
+          traffic_weight {
+        percentage      = 100
+        latest_revision = true
+      }
+    }
+
   # No ingress - solo comunicación interna
   tags = var.tags
+  depends_on = [azurerm_container_app_environment.this]
 }
 
 # Frontend Container App
@@ -67,6 +120,10 @@ resource "azurerm_container_app" "frontend" {
         name  = "USERS_API_URL"
         value = azurerm_container_app.users_api.latest_revision_fqdn
       }
+      env {
+        name  = "ZIPKIN_URL"
+        value = "myapp-zipkin:9411" 
+      }
     }
     
     min_replicas = var.frontend_config.min_replicas
@@ -84,6 +141,7 @@ resource "azurerm_container_app" "frontend" {
   }
 
   tags = var.tags
+  depends_on = [azurerm_container_app_environment.this]
 }
 
 # Auth API Container App
@@ -102,12 +160,12 @@ resource "azurerm_container_app" "auth_api" {
       
       env {
         name  = "USERS_API_ADDRESS"
-        value = "https://${azurerm_container_app.users_api.latest_revision_fqdn}"
+        value = "http://myapp-users-api:80"
       }
       
       env {
         name  = "REDIS_HOST"
-        value = "${var.prefix}-redis"
+        value = "myapp-redis"
       }
       
       env {
@@ -116,13 +174,13 @@ resource "azurerm_container_app" "auth_api" {
       }
       
       env {
-        name  = "REDIS_PASSWORD"
-        value = "redispassword123"
-      }
-      
-      env {
         name  = "JWT_SECRET"
         value = "myfancysecret"
+      }
+
+      env {
+        name  = "ZIPKIN_URL"
+        value = "http://myapp-zipkin:9411/api/v2/spans"
       }
     }
     
@@ -141,6 +199,7 @@ resource "azurerm_container_app" "auth_api" {
   }
 
   tags = var.tags
+  depends_on = [azurerm_container_app_environment.this]
 }
 
 # Todos API Container App
@@ -159,7 +218,7 @@ resource "azurerm_container_app" "todos_api" {
       
       env {
         name  = "REDIS_HOST"
-        value = "${var.prefix}-redis"
+        value = "myapp-redis"
       }
       
       env {
@@ -175,6 +234,11 @@ resource "azurerm_container_app" "todos_api" {
       env {
         name  = "JWT_SECRET"
         value = "myfancysecret"
+      }
+
+      env {
+        name  = "ZIPKIN_URL"
+        value = "http://myapp-zipkin:9411/api/v2/spans"
       }
     }
     
@@ -193,6 +257,7 @@ resource "azurerm_container_app" "todos_api" {
   }
 
   tags = var.tags
+  depends_on = [azurerm_container_app_environment.this]
 }
 
 # Users API Container App
@@ -213,6 +278,11 @@ resource "azurerm_container_app" "users_api" {
         name  = "JWT_SECRET"
         value = "myfancysecret"
       }
+
+      env {
+        name  = "ZIPKIN_URL"
+        value = "http://myapp-zipkin:9411"
+      }
     }
     
     min_replicas = var.api_config.min_replicas
@@ -230,6 +300,7 @@ resource "azurerm_container_app" "users_api" {
   }
 
   tags = var.tags
+  depends_on = [azurerm_container_app_environment.this]
 }
 
 # Log Processor Container App (interno, sin ingress)
@@ -248,7 +319,7 @@ resource "azurerm_container_app" "log_processor" {
       
       env {
         name  = "REDIS_HOST"
-        value = "${var.prefix}-redis"
+        value = "myapp-redis"
       }
       
       env {
@@ -260,6 +331,12 @@ resource "azurerm_container_app" "log_processor" {
         name  = "REDIS_CHANNEL"
         value = "log_channel"
       }
+
+      env {
+        name  = "ZIPKIN_URL"
+        value = "http://myapp-zipkin:9411"
+      }
+
     }
     
     min_replicas = var.log_processor_config.min_replicas
@@ -267,4 +344,5 @@ resource "azurerm_container_app" "log_processor" {
   }
 
   tags = var.tags
+  depends_on = [azurerm_container_app_environment.this]
 }
