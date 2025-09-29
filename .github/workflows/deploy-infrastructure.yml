@@ -44,7 +44,7 @@ jobs:
 
       # 7. Plan (con tfvars y secrets)
       - name: Terraform Plan
-        run: terraform plan -no-color -var-file="terraform.dev.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -out=tfplan
+        run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -out=tfplan
 
 
       # 8. Apply
