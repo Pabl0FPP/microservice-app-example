@@ -6,7 +6,7 @@
 
 ## 1. Contexto
 
-Sistema pequeño pero heterogéneo compuesto por servicios en Go (auth), Java (usuarios), NodeJS (todos), Python (procesador de logs) y Vue (frontend), apoyado por Redis (cache + pub/sub) y Zipkin (tracing). Sirve para experimentar integración continua, despliegue continuo, observabilidad y patrones de resiliencia sin la complejidad de un entorno empresarial grande.
+Sistema pequeño pero heterogéneo compuesto por servicios en Go (auth), Java (usuarios), NodeJS (todos), Python (procesador de logs) y Vue (frontend), apoyado por Redis (cache + pub/sub) y Zipkin (tracing). Sirve para experimentar integración continua, despliegue continuo, observabilidad y patrones de resiliencia sin la complejidad de un entorno empresarial grande. Entorno objetivo cloud: **Azure Container Apps** 
 
 ### ¿Por qué multi‑lenguaje?
 
@@ -91,6 +91,4 @@ docker compose up --build
 
 Luego abrir el frontend (puerto expuesto en `docker-compose.yml`), y revisar Zipkin si está publicado.
 
-
 ---
-

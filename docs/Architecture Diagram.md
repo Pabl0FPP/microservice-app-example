@@ -19,20 +19,37 @@ La solución implementa una aplicación TODO distribuida con autenticación y pe
 
 ## 2. Decisiones Principales de Diseño
 
-| Decisión                                          | Motivación                                            | Impacto                                                                        |
-| ------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------ |
-| Microservicios independientes                     | Aislar dominios (auth, users, todos, logging, UI)     | Escalado y ciclos de despliegue separados                                      |
-| JWT stateless en vez de sesiones                  | Simplificar escalado horizontal                       | Cada servicio valida token sin estado compartido                               |
-| Redis interno como store + cola                   | Rapidez inicial y simplicidad                         | Pendiente migrar a DB persistente real para TODOs                              |
-| Patrón Cache-Aside para TODOs                     | Reducir latencia y evitar recomputar lista inicial    | Estructura en Redis: `{items, lastInsertedID}`                                 |
-| Circuit Breakers en capas (frontend, auth, users) | Evitar fallas en cascada y mejorar tolerancia         | Fallbacks controlados en cada capa                                             |
-| Tracing distribuido (Zipkin)                      | Correlación extremo a extremo                         | Facilita troubleshooting de latencia y fallos                                  |
-| Pub/Sub para logs de operaciones                  | Desacoplar escritura de eventos del request principal | Procesamiento asíncrono en [`log-message-processor`](../log-message-processor) |
-| Externalización de configuración vía env vars     | 12-Factor                                             | Portabilidad entre entornos                                                    |
+| Decisión                                          | Motivación                                                            | Impacto                                                                        |
+| ------------------------------------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Microservicios independientes                     | Aislar dominios (auth, users, todos, logging, UI)                     | Escalado y ciclos de despliegue separados                                      |
+| Azure Container Apps como plataforma de ejecución | Despliegue serverless de contenedores sin gestionar orquestador (K8s) | Auto‐scale granular, menos sobrecarga operativa, integración con logs/ingress  |
+| JWT stateless en vez de sesiones                  | Simplificar escalado horizontal                                       | Cada servicio valida token sin estado compartido                               |
+| Redis interno como store + cola                   | Rapidez inicial y simplicidad                                         | Pendiente migrar a DB persistente real para TODOs                              |
+| Patrón Cache-Aside para TODOs                     | Reducir latencia y evitar recomputar lista inicial                    | Estructura en Redis: `{items, lastInsertedID}`                                 |
+| Circuit Breakers en capas (frontend, auth, users) | Evitar fallas en cascada y mejorar tolerancia                         | Fallbacks controlados en cada capa                                             |
+| Tracing distribuido (Zipkin)                      | Correlación extremo a extremo                                         | Facilita troubleshooting de latencia y fallos                                  |
+| Pub/Sub para logs de operaciones                  | Desacoplar escritura de eventos del request principal                 | Procesamiento asíncrono en [`log-message-processor`](../log-message-processor) |
+| Externalización de configuración vía env vars     | 12-Factor                                                             | Portabilidad entre entornos                                                    |
 
 ---
 
 ## 3. Patrones Clave Añadidos / Destacados
+
+### 3.0 Plataforma de Ejecución: Azure Container Apps
+
+Elegida para el despliegue destino por:
+
+- Abstracción de Kubernetes (sin manejar control plane ni nodos).
+- Escalado automático por revisiones y réplicas mínimas (ideal servicios pequeños heterogéneos).
+- Ingress HTTP gestionado + revisión por versión (facilita rollbacks rápidos).
+- Integración con logging centralizado y métricas sin wiring manual excesivo.
+- Coste operativo bajo para entorno de entrenamiento.
+
+Implicaciones:
+
+- Cada microservicio se empaqueta como imagen y se publica; Container Apps gestiona réplicas.
+- Posible añadir escalado basado en eventos (KEDA) futuro (e.g., volumen de mensajes Redis si se externaliza a un broker soportado).
+- Simplifica transición posterior a AKS si se requiere control más fino, preservando la estructura de imágenes.
 
 ### 3.1 Cache-Aside (Lectura/Escritura de TODOs)
 
