@@ -127,7 +127,7 @@ jobs:
     needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
     runs-on: ubuntu-latest
     # Solo ejecutar cuando NO sea un PR y todos los builds fueron exitosos
-    if: github.event_name != 'pull_request' && needs.*.result == 'success'
+    if: github.event_name != 'pull_request'
     
     steps:
     - name: Trigger Terraform Deploy
@@ -151,7 +151,7 @@ jobs:
   summary:
     needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
     runs-on: ubuntu-latest
-    if: always() && github.event_name != 'pull_request'
+    if: always() &&github.event_name != 'pull_request'
     
     steps:
     - name: Build Summary
