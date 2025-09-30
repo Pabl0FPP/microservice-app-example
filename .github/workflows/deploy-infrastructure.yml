@@ -1,6 +1,10 @@
 name: Terraform Deploy
 
 on:
+
+  repository_dispatch:
+    types: [trigger_terraform_deploy]
+    
   push:
     branches: ["ops/container-apps"]
   pull_request:
@@ -14,15 +18,13 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-    if: |
-      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/ops/container-apps') ||
-      (github.event_name == 'pull_request')
     
     steps:
       # 1. Descargar el código
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          ref: ops/container-apps
 
       # 2. Login en Azure con Service Principal
       - name: Azure Login
