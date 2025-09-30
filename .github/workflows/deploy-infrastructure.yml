@@ -4,8 +4,9 @@ on:
   push:
     branches: ["ops/container-apps"]
   pull_request:
-  workflow_run:                        # se activa cuando otro workflow termina
-    workflows: ["Build and Push Microservices"]  # nombre EXACTO del workflow en master
+    branches: ["ops/container-apps"]
+  workflow_run:
+    workflows: ["Build and Push Microservices"]
     branches: ["master"]
     types:
       - completed
@@ -13,11 +14,15 @@ on:
 jobs:
   terraform:
     runs-on: ubuntu-latest
-
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/ops/container-apps') ||
+      (github.event_name == 'pull_request')
+    
     steps:
       # 1. Descargar el código
       - name: Checkout repo
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       # 2. Login en Azure con Service Principal
       - name: Azure Login
@@ -25,13 +30,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 3. Exportar variables ARM para Terraform
-      - name: Export Azure Credentials
+      # 3. Configurar variables ARM para Terraform (forma más eficiente)
+      - name: Setup Terraform environment
+        env:
+          AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
         run: |
-          echo "ARM_CLIENT_ID=${{ fromJson(secrets.AZURE_CREDENTIALS).clientId }}" >> $GITHUB_ENV
-          echo "ARM_CLIENT_SECRET=${{ fromJson(secrets.AZURE_CREDENTIALS).clientSecret }}" >> $GITHUB_ENV
-          echo "ARM_SUBSCRIPTION_ID=${{ fromJson(secrets.AZURE_CREDENTIALS).subscriptionId }}" >> $GITHUB_ENV
-          echo "ARM_TENANT_ID=${{ fromJson(secrets.AZURE_CREDENTIALS).tenantId }}" >> $GITHUB_ENV
+          echo "ARM_CLIENT_ID=$(echo $AZURE_CREDS | jq -r .clientId)" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=$(echo $AZURE_CREDS | jq -r .clientSecret)" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=$(echo $AZURE_CREDS | jq -r .subscriptionId)" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=$(echo $AZURE_CREDS | jq -r .tenantId)" >> $GITHUB_ENV
 
       # 4. Instalar Terraform
       - name: Setup Terraform
@@ -39,7 +46,7 @@ jobs:
         with:
           terraform_version: 1.9.5
 
-      # 5. Inicializar (usa el backend remoto en Azure)
+      # 5. Inicializar
       - name: Terraform Init
         run: terraform init -no-color
 
@@ -47,11 +54,16 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
-      # 7. Plan (con tfvars y secrets)
+      # 7. Plan (solo mostrar en PRs, no aplicar)
       - name: Terraform Plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}"
+
+      # 8. Plan y Apply (solo cuando se hace push al branch o después del build)
+      - name: Terraform Plan for Apply
+        if: github.event_name != 'pull_request'
         run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -out=tfplan
 
-
-      # 8. Apply
       - name: Terraform Apply
+        if: github.event_name != 'pull_request'
         run: terraform apply -no-color -auto-approve tfplan
