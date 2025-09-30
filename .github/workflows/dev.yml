@@ -123,6 +123,30 @@ jobs:
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ secrets.DOCKER_USERNAME }}/log-message-processor:latest
 
+  trigger-terraform:
+    needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
+    runs-on: ubuntu-latest
+    # Solo ejecutar cuando NO sea un PR y todos los builds fueron exitosos
+    if: github.event_name != 'pull_request' && needs.*.result == 'success'
+    
+    steps:
+    - name: Trigger Terraform Deploy
+      run: |
+        curl -X POST "https://api.github.com/repos/${{ github.repository }}/dispatches" \
+        -H "Accept: application/vnd.github.v3+json" \
+        -H "Authorization: token ${{ secrets.PAT }}" \
+        -d '{
+          "event_type": "trigger_terraform_deploy",
+          "client_payload": {
+            "build_sha": "${{ github.sha }}",
+            "build_run_id": "${{ github.run_id }}",
+            "triggered_by": "build_pipeline",
+            "docker_username": "${{ secrets.DOCKER_USERNAME }}"
+          }
+        }'
+      env:
+        PAT: ${{ secrets.PAT }}
+        
   # Job final para mostrar summary
   summary:
     needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
