@@ -7,7 +7,7 @@
                 <div class='row'>
                     <div class='col-md-3'></div>
                     <div class='col-md-6'>
-                        <h2>NO HAGAS LOGIN</h2>
+                        <h2>HAZ LOGIN</h2>
                         <hr>
                     </div>
                 </div>
