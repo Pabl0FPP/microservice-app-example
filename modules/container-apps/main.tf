@@ -108,17 +108,17 @@ resource "azurerm_container_app" "frontend" {
       # Variables de entorno con URLs de APIs para envsubst
       env {
         name  = "AUTH_API_URL"
-        value = azurerm_container_app.auth_api.latest_revision_fqdn
+        value = "http://myapp-auth-api:8000"
       }
       
       env {
         name  = "TODOS_API_URL"
-        value = azurerm_container_app.todos_api.latest_revision_fqdn
+        value = "http://myapp-todos-api:8082"
       }
       
       env {
         name  = "USERS_API_URL"
-        value = azurerm_container_app.users_api.latest_revision_fqdn
+        value = "http://myapp-users-api:8083"
       }
       env {
         name  = "ZIPKIN_URL"
@@ -138,12 +138,6 @@ resource "azurerm_container_app" "frontend" {
       percentage      = 100
       latest_revision = true
     }
-  }
-
-  lifecycle {
-    ignore_changes = [
-      template[0].container[0].env,
-    ]
   }
 
   tags = var.tags
