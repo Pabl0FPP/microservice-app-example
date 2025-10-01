@@ -1,11 +1,15 @@
 name: Terraform Deploy
 
 on:
-  repository_dispatch:
-    types: [trigger_terraform_deploy]
-    
   push:
     branches: ["ops/container-apps"]
+
+  workflow_run:
+    workflows: ["Build and Push Microservices"]
+    types: [completed]
+    branches:
+      - main
+      - master
 
 jobs:
   terraform:

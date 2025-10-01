@@ -123,41 +123,6 @@ jobs:
         push: ${{ github.event_name != 'pull_request' }}
         tags: ${{ secrets.DOCKER_USERNAME }}/log-message-processor:latest
 
-  trigger-terraform:
-    needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
-    runs-on: ubuntu-latest
-    # Solo ejecutar cuando NO sea un PR y todos los builds fueron exitosos
-    if: github.event_name != 'pull_request'
-    
-    steps:
-    - name: Trigger Terraform Deploy
-      run: |
-        response=$(curl -w "\n%{http_code}" -X POST \
-          -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: token ${{ secrets.PAT }}" \
-          https://api.github.com/repos/${{ github.repository }}/dispatches \
-          -d '{
-            "event_type": "deploy_trigger",
-            "client_payload": {
-              "sha": "${{ github.sha }}",
-              "run_id": "${{ github.run_id }}",
-              "docker_username": "${{ secrets.DOCKER_USERNAME }}"
-            }
-          }')
-        
-        http_code=$(echo "$response" | tail -n1)
-        echo "HTTP Status Code: $http_code"
-        
-        if [ "$http_code" != "204" ]; then
-          echo "Error: Expected 204, got $http_code"
-          echo "Response: $response"
-          exit 1
-        fi
-        
-        echo "✅ Terraform workflow triggered successfully"
-      env:
-        PAT: ${{ secrets.PAT }}
-        
   # Job final para mostrar summary
   summary:
     needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
