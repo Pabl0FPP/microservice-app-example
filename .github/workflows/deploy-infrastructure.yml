@@ -75,6 +75,12 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
+      - name: Force unlock state (only first run if locked)
+        run: |
+          set +e
+          terraform force-unlock -force a86b5c75-01d1-3508-eb95-03cca56b571b || true
+          set -e
+
       # 8. Plan
       - name: Terraform Plan
         run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -var "image_tag=${{ steps.image-tag.outputs.tag }}" -out=tfplan
