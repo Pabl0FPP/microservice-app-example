@@ -27,10 +27,12 @@ jobs:
         if: github.event_name == 'workflow_run'
         uses: dawidd6/action-download-artifact@v2
         with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           workflow: "Build and Push Microservices"
+          run_id: ${{ github.event.workflow_run.id }}
           name: image-tag
           path: ./
-      
+
       - name: Get image tag
         id: image-tag
         run: |
