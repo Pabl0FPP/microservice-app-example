@@ -108,17 +108,17 @@ resource "azurerm_container_app" "frontend" {
       # Variables de entorno con URLs de APIs para envsubst
       env {
         name  = "AUTH_API_URL"
-        value = "http://myapp-auth-api:8000"
+        value = "myapp-auth-api:80"
       }
       
       env {
         name  = "TODOS_API_URL"
-        value = "http://myapp-todos-api:8082"
+        value = "myapp-todos-api:80"
       }
       
       env {
         name  = "USERS_API_URL"
-        value = "http://myapp-users-api:8083"
+        value = "myapp-users-api:80"
       }
       env {
         name  = "ZIPKIN_URL"
