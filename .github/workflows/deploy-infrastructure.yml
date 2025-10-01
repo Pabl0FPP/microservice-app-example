@@ -17,18 +17,39 @@ jobs:
     
     steps:
       # 1. Descargar el código
-      - name: Checkout repo
+      - name: Checkout infrastructure code
         uses: actions/checkout@v4
         with:
           ref: ops/container-apps
 
-      # 2. Login en Azure con Service Principal
+      # 2. Descargar el tag de imagen si fue disparado por workflow_run
+      - name: Download image tag artifact
+        if: github.event_name == 'workflow_run'
+        uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: build-and-push.yml
+          name: image-tag
+          path: ./
+      
+      - name: Get image tag
+        id: image-tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_run" ] && [ -f image-tag.txt ]; then
+            IMAGE_TAG=$(cat image-tag.txt)
+            echo "Using image tag from build: $IMAGE_TAG"
+          else
+            IMAGE_TAG="latest"
+            echo "Using default tag: latest"
+          fi
+          echo "tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # 3. Login en Azure con Service Principal
       - name: Azure Login
         uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      # 3. Configurar variables ARM para Terraform (forma más eficiente)
+      # 4. Configurar variables ARM para Terraform (forma más eficiente)
       - name: Setup Terraform environment
         env:
           AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
@@ -38,30 +59,26 @@ jobs:
           echo "ARM_SUBSCRIPTION_ID=$(echo $AZURE_CREDS | jq -r .subscriptionId)" >> $GITHUB_ENV
           echo "ARM_TENANT_ID=$(echo $AZURE_CREDS | jq -r .tenantId)" >> $GITHUB_ENV
 
-      # 4. Instalar Terraform
+      # 5. Instalar Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.9.5
 
-      # 5. Inicializar
+      # 6. Inicializar
       - name: Terraform Init
         run: terraform init -no-color
 
-      # 6. Validar sintaxis
+      # 7. Validar sintaxis
       - name: Terraform Validate
         run: terraform validate -no-color
 
-      # 7. Plan (solo mostrar en PRs, no aplicar)
+      # 8. Plan (solo mostrar en PRs, no aplicar)
       - name: Terraform Plan
         if: github.event_name == 'pull_request'
-        run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}"
+        run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -var "image_tag=${{ steps.image-tag.outputs.tag }}" -out=tfplan
 
-      # 8. Plan y Apply (solo cuando se hace push al branch o después del build)
-      - name: Terraform Plan for Apply
-        if: github.event_name != 'pull_request'
-        run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -out=tfplan
-
+      # 9. Apply (solo cuando se hace push al branch o después del build)
       - name: Terraform Apply
         if: github.event_name != 'pull_request'
         run: terraform apply -no-color -auto-approve tfplan

@@ -7,8 +7,20 @@ on:
     branches: [ main, master ]
 
 jobs:
-  # Job para cada microservicio en paralelo
+  generate-tag:
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - name: Generate image tag
+        id: tag
+        run: |
+          TAG="v1.0.${{ github.run_number }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "Generated tag: $TAG"
+
   build-auth-api:
+    needs: generate-tag
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -29,9 +41,12 @@ jobs:
       with:
         context: ./auth-api
         push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ secrets.DOCKER_USERNAME }}/auth-api:latest
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/auth-api:${{ needs.generate-tag.outputs.image_tag }}
+          ${{ secrets.DOCKER_USERNAME }}/auth-api:latest
 
   build-todos-api:
+    needs: generate-tag
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -52,9 +67,12 @@ jobs:
       with:
         context: ./todos-api
         push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ secrets.DOCKER_USERNAME }}/todos-api:latest
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/todos-api:${{ needs.generate-tag.outputs.image_tag }}
+          ${{ secrets.DOCKER_USERNAME }}/todos-api:latest
 
   build-users-api:
+    needs: generate-tag
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -75,9 +93,12 @@ jobs:
       with:
         context: ./users-api
         push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ secrets.DOCKER_USERNAME }}/users-api:latest
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/users-api:${{ needs.generate-tag.outputs.image_tag }}
+          ${{ secrets.DOCKER_USERNAME }}/users-api:latest
 
   build-frontend:
+    needs: generate-tag
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -98,9 +119,12 @@ jobs:
       with:
         context: ./frontend
         push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ secrets.DOCKER_USERNAME }}/frontend:latest
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/frontend:${{ needs.generate-tag.outputs.image_tag }}
+          ${{ secrets.DOCKER_USERNAME }}/frontend:latest
 
   build-log-processor:
+    needs: generate-tag
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
@@ -121,25 +145,22 @@ jobs:
       with:
         context: ./log-message-processor
         push: ${{ github.event_name != 'pull_request' }}
-        tags: ${{ secrets.DOCKER_USERNAME }}/log-message-processor:latest
+        tags: |
+          ${{ secrets.DOCKER_USERNAME }}/log-message-processor:${{ needs.generate-tag.outputs.image_tag }}
+          ${{ secrets.DOCKER_USERNAME }}/log-message-processor:latest
 
-  # Job final para mostrar summary
-  summary:
-    needs: [build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
+  save-image-tag:
+    needs: [generate-tag, build-auth-api, build-todos-api, build-users-api, build-frontend, build-log-processor]
     runs-on: ubuntu-latest
-    if: always() &&github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request'
     
     steps:
-    - name: Build Summary
-      run: |
-        echo "🚀 All microservices built and pushed to Docker Hub!"
-        echo ""
-        echo "Images available:"
-        echo "- ${{ secrets.DOCKER_USERNAME }}/auth-api:latest"
-        echo "- ${{ secrets.DOCKER_USERNAME }}/todos-api:latest"
-        echo "- ${{ secrets.DOCKER_USERNAME }}/users-api:latest"
-        echo "- ${{ secrets.DOCKER_USERNAME }}/frontend:latest"
-        echo "- ${{ secrets.DOCKER_USERNAME }}/log-message-processor:latest"
-        echo ""
-        echo "To deploy manually, run:"
-        echo "cd ansible && ./deploy.sh ${{ secrets.DOCKER_USERNAME }} latest"
+    - name: Save image tag to file
+      run: echo "${{ needs.generate-tag.outputs.image_tag }}" > image-tag.txt
+    
+    - name: Upload image tag artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: image-tag
+        path: image-tag.txt
+        retention-days: 5
