@@ -27,7 +27,7 @@ jobs:
         if: github.event_name == 'workflow_run'
         uses: dawidd6/action-download-artifact@v2
         with:
-          workflow: build-and-push.yml
+          workflow: "Build and Push Microservices"
           name: image-tag
           path: ./
       
