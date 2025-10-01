@@ -1,0 +1,63 @@
+name: Terraform Deploy
+
+on:
+  repository_dispatch:
+    types: [trigger_terraform_deploy]
+    
+  push:
+    branches: ["ops/container-apps"]
+
+jobs:
+  terraform:
+    runs-on: ubuntu-latest
+    
+    steps:
+      # 1. Descargar el código
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          ref: ops/container-apps
+
+      # 2. Login en Azure con Service Principal
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # 3. Configurar variables ARM para Terraform (forma más eficiente)
+      - name: Setup Terraform environment
+        env:
+          AZURE_CREDS: ${{ secrets.AZURE_CREDENTIALS }}
+        run: |
+          echo "ARM_CLIENT_ID=$(echo $AZURE_CREDS | jq -r .clientId)" >> $GITHUB_ENV
+          echo "ARM_CLIENT_SECRET=$(echo $AZURE_CREDS | jq -r .clientSecret)" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=$(echo $AZURE_CREDS | jq -r .subscriptionId)" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=$(echo $AZURE_CREDS | jq -r .tenantId)" >> $GITHUB_ENV
+
+      # 4. Instalar Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      # 5. Inicializar
+      - name: Terraform Init
+        run: terraform init -no-color
+
+      # 6. Validar sintaxis
+      - name: Terraform Validate
+        run: terraform validate -no-color
+
+      # 7. Plan (solo mostrar en PRs, no aplicar)
+      - name: Terraform Plan
+        if: github.event_name == 'pull_request'
+        run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}"
+
+      # 8. Plan y Apply (solo cuando se hace push al branch o después del build)
+      - name: Terraform Plan for Apply
+        if: github.event_name != 'pull_request'
+        run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -out=tfplan
+
+      - name: Terraform Apply
+        if: github.event_name != 'pull_request'
+        run: terraform apply -no-color -auto-approve tfplan
