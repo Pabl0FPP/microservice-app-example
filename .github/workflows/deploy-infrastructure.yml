@@ -75,12 +75,10 @@ jobs:
       - name: Terraform Validate
         run: terraform validate -no-color
 
-      # 8. Plan (solo mostrar en PRs, no aplicar)
+      # 8. Plan
       - name: Terraform Plan
-        if: github.event_name == 'pull_request'
         run: terraform plan -no-color -var-file="terraform.tfvars" -var "docker_username=${{ secrets.DOCKER_USERNAME }}" -var "image_tag=${{ steps.image-tag.outputs.tag }}" -out=tfplan
 
-      # 9. Apply (solo cuando se hace push al branch o después del build)
+      # 9. Apply
       - name: Terraform Apply
-        if: github.event_name != 'pull_request'
         run: terraform apply -no-color -auto-approve tfplan
