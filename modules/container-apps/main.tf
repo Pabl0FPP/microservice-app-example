@@ -140,6 +140,12 @@ resource "azurerm_container_app" "frontend" {
     }
   }
 
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].env,
+    ]
+  }
+
   tags = var.tags
   depends_on = [azurerm_container_app_environment.this]
 }
